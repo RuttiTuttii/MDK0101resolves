@@ -1,0 +1,243 @@
+### Решение для задания 3.1: Настройка `RadioButton` с `ControlTemplate`
+```xml
+<Window.Resources>
+    <!-- Шаблон для RadioButton -->
+    <ControlTemplate x:Key="CustomRadioButton" TargetType="RadioButton">
+        <Border 
+            x:Name="border"
+            CornerRadius="5"
+            Background="{TemplateBinding Background}"
+            Padding="10,5">
+            <ContentPresenter 
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"/>
+        </Border>
+        <ControlTemplate.Triggers>
+            <!-- Триггер для выбранного состояния -->
+            <Trigger Property="IsChecked" Value="True">
+                <Setter TargetName="border" Property="Background" Value="#FFD1E8FF"/>
+            </Trigger>
+            <!-- Триггер для неактивного состояния -->
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter TargetName="border" Property="Background" Value="#FFF0F0F0"/>
+                <Setter TargetName="border" Property="TextElement.Foreground" Value="Gray"/>
+            </Trigger>
+        </ControlTemplate.Triggers>
+    </ControlTemplate>
+</Window.Resources>
+
+<!-- Боковое меню с RadioButton -->
+<StackPanel Orientation="Vertical" VerticalAlignment="Top">
+    <RadioButton 
+        Template="{StaticResource CustomRadioButton}"
+        Content="Главная"
+        GroupName="Menu"
+        Click="MenuRadioButton_Click"/>
+    <RadioButton 
+        Template="{StaticResource CustomRadioButton}"
+        Content="Профиль"
+        GroupName="Menu"
+        Click="MenuRadioButton_Click"/>
+    <RadioButton 
+        Template="{StaticResource CustomRadioButton}"
+        Content="Настройки"
+        GroupName="Menu"
+        Click="MenuRadioButton_Click"/>
+    <!-- Добавьте еще 2 пункта -->
+</StackPanel>
+```
+**Code-Behind (MainWindow.xaml.cs):**
+```csharp
+private void MenuRadioButton_Click(object sender, RoutedEventArgs e)
+{
+    if (sender is RadioButton radio && radio.IsChecked == true)
+    {
+        this.Title = radio.Content.ToString();
+    }
+}
+```
+
+---
+
+### Решение для задания 3.2: Пользовательский элемент "Текущее время"
+**TimeDisplay.xaml:**
+```xml
+<UserControl x:Class="YourNamespace.TimeDisplay">
+    <TextBlock x:Name="timeLabel" FontSize="16"/>
+</UserControl>
+```
+
+**TimeDisplay.xaml.cs:**
+```csharp
+public partial class TimeDisplay : UserControl
+{
+    private DispatcherTimer timer;
+
+    public TimeDisplay()
+    {
+        InitializeComponent();
+        timer = new DispatcherTimer(DispatcherPriority.Render);
+        timer.Interval = TimeSpan.FromSeconds(1);
+        timer.Tick += Timer_Tick;
+        timer.Start();
+    }
+
+    private void Timer_Tick(object sender, EventArgs e)
+    {
+        timeLabel.Text = DateTime.Now.ToString("HH:mm:ss");
+    }
+}
+```
+
+---
+
+### Решение для заданий 3.3-3.4: Пользовательский элемент "Счетчик"
+**NumericUpDown.xaml:**
+```xml
+<UserControl x:Class="YourNamespace.NumericUpDown">
+    <StackPanel Orientation="Horizontal">
+        <Button x:Name="btnMinus" Content="-" Click="btnMinus_Click"/>
+        <TextBox x:Name="txtValue" Width="50" TextAlignment="Center" IsReadOnly="True"/>
+        <Button x:Name="btnPlus" Content="+" Click="btnPlus_Click"/>
+    </StackPanel>
+</UserControl>
+```
+
+**NumericUpDown.xaml.cs:**
+```csharp
+public partial class NumericUpDown : UserControl
+{
+    // Свойство зависимости Value
+    public static readonly DependencyProperty ValueProperty = 
+        DependencyProperty.Register(
+            "Value", 
+            typeof(int), 
+            typeof(NumericUpDown),
+            new PropertyMetadata(0, OnValueChanged));
+
+    // Свойство MaxValue
+    public int MaxValue
+    {
+        get => (int)GetValue(MaxValueProperty);
+        set => SetValue(MaxValueProperty, value);
+    }
+    
+    public static readonly DependencyProperty MaxValueProperty =
+        DependencyProperty.Register(
+            "MaxValue", 
+            typeof(int), 
+            typeof(NumericUpDown), 
+            new PropertyMetadata(int.MaxValue));
+
+    // Событие ValueChanged
+    public event RoutedEventHandler ValueChanged
+    {
+        add => AddHandler(ValueChangedEvent, value);
+        remove => RemoveHandler(ValueChangedEvent, value);
+    }
+    
+    public static readonly RoutedEvent ValueChangedEvent = 
+        EventManager.RegisterRoutedEvent(
+            "ValueChanged",
+            RoutingStrategy.Bubble,
+            typeof(RoutedEventHandler),
+            typeof(NumericUpDown));
+
+    public int Value
+    {
+        get => (int)GetValue(ValueProperty);
+        set => SetValue(ValueProperty, value);
+    }
+
+    public NumericUpDown()
+    {
+        InitializeComponent();
+        UpdateButtons();
+    }
+
+    private static void OnValueChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (NumericUpDown)d;
+        control.txtValue.Text = control.Value.ToString();
+        control.UpdateButtons();
+        
+        // Генерация события
+        var args = new RoutedEventArgs(ValueChangedEvent);
+        control.RaiseEvent(args);
+    }
+
+    private void UpdateButtons()
+    {
+        btnMinus.IsEnabled = Value > 0;
+        btnPlus.IsEnabled = Value < MaxValue;
+    }
+
+    private void btnPlus_Click(object sender, RoutedEventArgs e)
+    {
+        if (Value < MaxValue) Value++;
+    }
+
+    private void btnMinus_Click(object sender, RoutedEventArgs e)
+    {
+        if (Value > 0) Value--;
+    }
+}
+```
+
+**Использование в основном окне:**
+```xml
+<local:NumericUpDown 
+    x:Name="counter" 
+    MaxValue="5"
+    ValueChanged="Counter_ValueChanged"/>
+
+<TextBlock x:Name="totalPriceText"/>
+```
+```csharp
+private void Counter_ValueChanged(object sender, RoutedEventArgs e)
+{
+    // Предположим, что цена хранится в переменной price
+    decimal price = 100; 
+    totalPriceText.Text = (price * counter.Value).ToString("C");
+}
+```
+
+---
+
+### Решение для задания 3.5: Создание библиотеки элементов управления
+1. **Создайте библиотеку:**
+   - В Visual Studio: **Файл → Создать → Проект → WPF Custom Control Library**
+   - Назовите проект `CustomControlsLib`
+
+2. **Перенесите элементы:**
+   - Скопируйте файлы `TimeDisplay.xaml/.cs` и `NumericUpDown.xaml/.cs` в новый проект
+   - Обновите namespace на `CustomControlsLib`
+
+3. **Использование в приложении:**
+   - Добавьте ссылку на библиотеку в основном проекте
+   - В XAML-файл добавьте namespace:
+     ```xml
+     xmlns:custom="clr-namespace:CustomControlsLib;assembly=CustomControlsLib"
+     ```
+   - Используйте элементы:
+     ```xml
+     <custom:TimeDisplay/>
+     <custom:NumericUpDown MaxValue="5"/>
+     ```
+
+---
+
+### Итоговая структура приложения:
+```
+MainWindow.xaml
+├── StackPanel с RadioButton (кастомный шаблон)
+├── TimeDisplay (показывает время)
+├── NumericUpDown (счетчик с кнопками +/-)
+└── TextBlock (отображает стоимость)
+```
+
+Все компоненты:
+- Кастомизированные `RadioButton` с триггерами
+- Работающий таймер в `TimeDisplay`
+- Счетчик с зависимыми свойствами и событиями
+- Подключение через библиотеку (задание 3.5)
