@@ -1,0 +1,133 @@
+Исправлю фильтрацию по размеру. Основные проблемы:
+1. Неправильное определение выбранной радиокнопки
+2. Отсутствие обработки нечисловых значений
+3. Неверная группировка радиокнопок
+
+### Исправленный XAML для фильтра по размеру:
+```xml
+<!-- 3.2 Фильтр по размеру (радиокнопки) -->
+<Label Text="Фильтр по размеру:" Grid.Row="1" Grid.Column="0"/>
+<Entry x:Name="SizeFilterEntry" 
+       Placeholder="Размер (байты)"
+       TextChanged="OnFilterChanged"
+       Grid.Row="1" Grid.Column="1"/>
+<StackLayout Orientation="Horizontal" Grid.Row="1" Grid.Column="2">
+    <RadioButton x:Name="GreaterOrEqualRadio" 
+                 Content="≥"
+                 GroupName="SizeGroup"
+                 CheckedChanged="OnFilterChanged"/>
+    <RadioButton x:Name="LessOrEqualRadio" 
+                 Content="≤"
+                 GroupName="SizeGroup"
+                 CheckedChanged="OnFilterChanged"/>
+    <RadioButton x:Name="AllSizeRadio" 
+                 Content="Все"
+                 GroupName="SizeGroup"
+                 IsChecked="True"
+                 CheckedChanged="OnFilterChanged"/>
+</StackLayout>
+```
+
+### Исправленный код для фильтрации по размеру:
+```csharp
+// 3.2 Фильтр по размеру (радиокнопки)
+private IEnumerable<FileInfo> FilterBySizeRadio(IEnumerable<FileInfo> files)
+{
+    // Если текст не число - игнорируем фильтр
+    if (!long.TryParse(SizeFilterEntry.Text, out long sizeFilter)) 
+        return files;
+    
+    // Определяем выбранную радиокнопку
+    if (GreaterOrEqualRadio.IsChecked)
+        return files.Where(f => f.Length >= sizeFilter);
+    
+    if (LessOrEqualRadio.IsChecked)
+        return files.Where(f => f.Length <= sizeFilter);
+    
+    return files;
+}
+```
+
+### Для диапазона размеров (3.3):
+```csharp
+// 3.3 Фильтр по диапазону размеров
+private IEnumerable<FileInfo> FilterBySizeRange(IEnumerable<FileInfo> files)
+{
+    // Фильтр по минимальному размеру
+    if (MinSizeCheck.IsChecked && long.TryParse(MinSizeEntry.Text, out long minSize))
+    {
+        files = files.Where(f => f.Length >= minSize);
+    }
+    
+    // Фильтр по максимальному размеру
+    if (MaxSizeCheck.IsChecked && long.TryParse(MaxSizeEntry.Text, out long maxSize))
+    {
+        files = files.Where(f => f.Length <= maxSize);
+    }
+    
+    return files;
+}
+```
+
+### Дополнительные исправления в XAML:
+```xml
+<!-- 3.3 Фильтр по диапазону размеров -->
+<Label Text="Диапазон размеров:" Grid.Row="2" Grid.Column="0"/>
+<Grid Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2">
+    <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="Auto"/>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="Auto"/>
+        <ColumnDefinition Width="*"/>
+    </Grid.ColumnDefinitions>
+    
+    <CheckBox x:Name="MinSizeCheck" 
+              CheckedChanged="OnFilterChanged"
+              Grid.Column="0"
+              VerticalOptions="Center"/>
+    <Label Text="Мин:" 
+           Grid.Column="1"
+           VerticalOptions="Center"/>
+    <Entry x:Name="MinSizeEntry" 
+           Placeholder="0" 
+           WidthRequest="100"
+           TextChanged="OnFilterChanged"
+           Grid.Column="2"/>
+    
+    <CheckBox x:Name="MaxSizeCheck" 
+              CheckedChanged="OnFilterChanged"
+              Grid.Column="3"
+              VerticalOptions="Center"/>
+    <Label Text="Макс:" 
+           Grid.Column="4"
+           VerticalOptions="Center"/>
+    <Entry x:Name="MaxSizeEntry" 
+           Placeholder="∞" 
+           WidthRequest="100"
+           TextChanged="OnFilterChanged"
+           Grid.Column="5"/>
+</Grid>
+```
+
+### Ключевые исправления:
+1. **Радиокнопки**:
+   - Добавлены имена (x:Name) для каждой кнопки
+   - Исправлена группировка через GroupName
+   - В коде проверяется свойство IsChecked конкретной кнопки
+
+2. **Обработка ввода**:
+   - Добавлена проверка TryParse для числовых значений
+   - При нечисловом значении фильтр игнорируется
+   - Учитывается состояние чекбоксов
+
+3. **Интерфейс**:
+   - Улучшено расположение элементов
+   - Добавлены подписи для полей ввода
+   - Оптимизировано использование пространства
+
+4. **Логика фильтрации**:
+   - Фильтры применяются последовательно
+   - Каждый фильтр работает независимо
+   - При изменении любого элемента управления вызывается обновление
+
+Для полной работоспособности убедитесь, что все обработчики событий (TextChanged, CheckedChanged) привязаны к методу OnFilterChanged, который вызывает UpdateFileList().
