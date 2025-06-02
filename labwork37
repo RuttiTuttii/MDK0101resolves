@@ -1,0 +1,256 @@
+### Решение на C# (XAML и код) для .NET MAUI
+
+#### XAML (MainPage.xaml)
+```xml
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="FileBrowser.MainPage">
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,*" 
+          ColumnDefinitions="*,*,*" 
+          Padding="10"
+          RowSpacing="10"
+          ColumnSpacing="10">
+        
+        <!-- 3.1 Фильтр по имени -->
+        <Label Text="Фильтр по имени:" Grid.Row="0" Grid.Column="0"/>
+        <Entry x:Name="NameFilterEntry" 
+               Placeholder="Введите часть имени"
+               TextChanged="OnFilterChanged"
+               Grid.Row="0" Grid.Column="1"/>
+        <Button Text="Сбросить фильтр" 
+                Clicked="OnResetFilterClicked"
+                Grid.Row="0" Grid.Column="2"/>
+        
+        <!-- 3.2 Фильтр по размеру (радиокнопки) -->
+        <Label Text="Фильтр по размеру:" Grid.Row="1" Grid.Column="0"/>
+        <Entry x:Name="SizeFilterEntry" 
+               Placeholder="Размер (байты)"
+               TextChanged="OnFilterChanged"
+               Grid.Row="1" Grid.Column="1"/>
+        <StackLayout Orientation="Horizontal" Grid.Row="1" Grid.Column="2">
+            <RadioButton Content="≥" GroupName="SizeGroup" CheckedChanged="OnFilterChanged"/>
+            <RadioButton Content="≤" GroupName="SizeGroup" CheckedChanged="OnFilterChanged"/>
+            <RadioButton Content="Все" GroupName="SizeGroup" IsChecked="True" CheckedChanged="OnFilterChanged"/>
+        </StackLayout>
+        
+        <!-- 3.3 Фильтр по диапазону размеров -->
+        <Label Text="Диапазон размеров:" Grid.Row="2" Grid.Column="0"/>
+        <StackLayout Orientation="Horizontal" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2">
+            <CheckBox x:Name="MinSizeCheck" CheckedChanged="OnFilterChanged"/>
+            <Entry x:Name="MinSizeEntry" Placeholder="Мин" WidthRequest="80" TextChanged="OnFilterChanged"/>
+            <CheckBox x:Name="MaxSizeCheck" CheckedChanged="OnFilterChanged"/>
+            <Entry x:Name="MaxSizeEntry" Placeholder="Макс" WidthRequest="80" TextChanged="OnFilterChanged"/>
+        </StackLayout>
+        
+        <!-- 3.4 Фильтр по дате изменения -->
+        <Label Text="Фильтр по дате:" Grid.Row="3" Grid.Column="0"/>
+        <DatePicker x:Name="DatePickerFilter" 
+                    DateSelected="OnFilterChanged"
+                    Grid.Row="3" Grid.Column="1"/>
+        <CheckBox x:Name="DateCheckBox" 
+                  Content="После указанной даты"
+                  CheckedChanged="OnFilterChanged"
+                  Grid.Row="3" Grid.Column="2"/>
+        
+        <!-- 3.5 Фильтр по дате создания -->
+        <Label Text="Период создания:" Grid.Row="4" Grid.Column="0"/>
+        <Picker x:Name="DatePeriodPicker" 
+                SelectedIndexChanged="OnFilterChanged"
+                Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2">
+            <Picker.Items>
+                <x:String>Все</x:String>
+                <x:String>Сегодня</x:String>
+                <x:String>За неделю</x:String>
+                <x:String>В этом месяце</x:String>
+            </Picker.Items>
+        </Picker>
+        
+        <!-- Счетчик записей -->
+        <Label x:Name="CounterLabel" 
+               Text="Показано 0 из 0 записей" 
+               Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="3"/>
+        
+        <!-- Список файлов -->
+        <ListView x:Name="FilesListView" 
+                  Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="3"
+                  Grid.RowSpan="3"
+                  VerticalOptions="FillAndExpand">
+            <ListView.ItemTemplate>
+                <DataTemplate>
+                    <ViewCell>
+                        <Grid Padding="10" ColumnDefinitions="*,*,*,*,*,*">
+                            <Label Text="{Binding Name}" Grid.Column="0"/>
+                            <Label Text="{Binding Extension}" Grid.Column="1"/>
+                            <Label Text="{Binding FullName}" Grid.Column="2" LineBreakMode="TailTruncation"/>
+                            <Label Text="{Binding Length}" Grid.Column="3"/>
+                            <Label Text="{Binding CreationTime, StringFormat='{0:dd.MM.yyyy}'}" Grid.Column="4"/>
+                            <Label Text="{Binding LastWriteTime, StringFormat='{0:dd.MM.yyyy}'}" Grid.Column="5"/>
+                        </Grid>
+                    </ViewCell>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+    </Grid>
+</ContentPage>
+```
+
+#### Код (MainPage.xaml.cs)
+```csharp
+using System.IO;
+using System.Linq;
+
+namespace FileBrowser;
+
+public partial class MainPage : ContentPage
+{
+    private readonly string _directoryPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+    private IEnumerable<FileInfo> _allFiles = Enumerable.Empty<FileInfo>();
+
+    public MainPage()
+    {
+        InitializeComponent();
+        LoadFiles();
+    }
+
+    private void LoadFiles()
+    {
+        try
+        {
+            var directory = new DirectoryInfo(_directoryPath);
+            _allFiles = directory.GetFiles().AsEnumerable();
+            UpdateFileList();
+        }
+        catch (Exception ex)
+        {
+            DisplayAlert("Ошибка", $"Не удалось загрузить файлы: {ex.Message}", "OK");
+        }
+    }
+
+    private void UpdateFileList()
+    {
+        var result = _allFiles.AsEnumerable();
+
+        // 3.1 Фильтр по имени
+        result = FilterByName(result);
+
+        // 3.2 Фильтр по размеру (радиокнопки)
+        result = FilterBySizeRadio(result);
+
+        // 3.3 Фильтр по диапазону размеров
+        result = FilterBySizeRange(result);
+
+        // 3.4 Фильтр по дате изменения
+        result = FilterByModifiedDate(result);
+
+        // 3.5 Фильтр по дате создания
+        result = FilterByCreatedDate(result);
+
+        FilesListView.ItemsSource = result.ToList();
+        CounterLabel.Text = $"Показано {result.Count()} из {_allFiles.Count()} записей";
+    }
+
+    // 3.1 Фильтр по имени
+    private IEnumerable<FileInfo> FilterByName(IEnumerable<FileInfo> files)
+    {
+        if (!string.IsNullOrWhiteSpace(NameFilterEntry.Text))
+            return files.Where(f => f.Name.Contains(NameFilterEntry.Text, StringComparison.OrdinalIgnoreCase));
+        return files;
+    }
+
+    // 3.2 Фильтр по размеру (радиокнопки)
+    private IEnumerable<FileInfo> FilterBySizeRadio(IEnumerable<FileInfo> files)
+    {
+        if (!long.TryParse(SizeFilterEntry.Text, out long size)) 
+            return files;
+
+        var selectedRadio = this.FindByName<RadioButton>("SizeGroup")?.GroupName;
+        return selectedRadio switch
+        {
+            "≥" => files.Where(f => f.Length >= size),
+            "≤" => files.Where(f => f.Length <= size),
+            _ => files
+        };
+    }
+
+    // 3.3 Фильтр по диапазону размеров
+    private IEnumerable<FileInfo> FilterBySizeRange(IEnumerable<FileInfo> files)
+    {
+        if (MinSizeCheck.IsChecked && long.TryParse(MinSizeEntry.Text, out long min))
+            files = files.Where(f => f.Length >= min);
+        
+        if (MaxSizeCheck.IsChecked && long.TryParse(MaxSizeEntry.Text, out long max))
+            files = files.Where(f => f.Length <= max);
+        
+        return files;
+    }
+
+    // 3.4 Фильтр по дате изменения
+    private IEnumerable<FileInfo> FilterByModifiedDate(IEnumerable<FileInfo> files)
+    {
+        if (DateCheckBox.IsChecked && DatePickerFilter.Date != DateTime.MinValue)
+            return files.Where(f => f.LastWriteTime.Date >= DatePickerFilter.Date);
+        return files;
+    }
+
+    // 3.5 Фильтр по дате создания
+    private IEnumerable<FileInfo> FilterByCreatedDate(IEnumerable<FileInfo> files)
+    {
+        if (DatePeriodPicker.SelectedIndex <= 0) 
+            return files;
+
+        DateTime now = DateTime.Now;
+        DateTime startDate = DatePeriodPicker.SelectedItem switch
+        {
+            "Сегодня" => now.Date,
+            "За неделю" => now.AddDays(-7).Date,
+            "В этом месяце" => new DateTime(now.Year, now.Month, 1),
+            _ => DateTime.MinValue
+        };
+
+        return files.Where(f => f.CreationTime.Date >= startDate);
+    }
+
+    // Обработчики событий
+    private void OnFilterChanged(object sender, EventArgs e) => UpdateFileList();
+    
+    private void OnResetFilterClicked(object sender, EventArgs e)
+    {
+        NameFilterEntry.Text = string.Empty;
+        UpdateFileList();
+    }
+}
+```
+
+### Основные компоненты решения:
+
+1. **Иерархия элементов**:
+   - Grid с 9 строками для организации элементов управления
+   - Все фильтры расположены в верхней части
+   - ListView занимает основное пространство
+
+2. **Фильтрация**:
+   - По имени (3.1): регистронезависимый поиск при вводе текста
+   - По размеру (3.2): радиокнопки для выбора условия
+   - По диапазону (3.3): независимые флажки для min/max
+   - По дате изменения (3.4): DatePicker + CheckBox
+   - По дате создания (3.5): Picker с предустановками
+
+3. **Особенности реализации**:
+   - Все фильтры комбинируются последовательно
+   - Автообновление при любом изменении фильтров
+   - Счетчик записей обновляется в реальном времени
+   - Обработка ошибок при загрузке файлов
+   - Поддержка отображения всех требуемых атрибутов файла
+
+4. **Технические детали**:
+   - Используется папка документов пользователя
+   - Для фильтрации применяются LINQ-запросы
+   - DataTemplate для ListView показывает 6 атрибутов файла
+   - Адаптивная разметка для разных размеров экрана
+
+Для использования:
+1. Создайте .NET MAUI-проект
+2. Замените MainPage.xaml и MainPage.xaml.cs приведенным кодом
+3. Добавьте разрешения для доступа к файловой системе (в AndroidManifest.xml)
+4. Запустите приложение
