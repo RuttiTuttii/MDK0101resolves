@@ -1,8 +1,30 @@
-### Решение для проекта LabWork39
+Вот полный код для .NET MAUI (NET 8.0) приложения, реализующего все задания:
 
-#### Главная страница (MainPage.xaml.cs)
+### 1. MainPage.xaml
+```xml
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="LabWork39.MainPage"
+             Title="Главная">
+    <ScrollView>
+        <VerticalStackLayout Spacing="20" Padding="30">
+            <Label Text="Лабораторная работа 39" 
+                   FontSize="Title" HorizontalOptions="Center"/>
+            
+            <Button Text="Задание 3.1" Clicked="OnTaskClicked" CommandParameter="1"/>
+            <Button Text="Задание 3.2" Clicked="OnTaskClicked" CommandParameter="2"/>
+            <Button Text="Задание 3.3" Clicked="OnTaskClicked" CommandParameter="3"/>
+            <Button Text="Задание 3.4" Clicked="OnTaskClicked" CommandParameter="4"/>
+            <Button Text="Задание 3.5" Clicked="OnTaskClicked" CommandParameter="5"/>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
+```
+
+### 2. MainPage.xaml.cs
 ```csharp
-using Xamarin.Forms;
+using Microsoft.Maui.Controls;
 
 namespace LabWork39
 {
@@ -11,74 +33,113 @@ namespace LabWork39
         public MainPage()
         {
             InitializeComponent();
-            CreateNavigationButtons();
         }
 
-        private void CreateNavigationButtons()
+        private async void OnTaskClicked(object sender, EventArgs e)
         {
-            var layout = new StackLayout();
-
-            string[] tasks = { "Задание 3.1", "Задание 3.2", "Задание 3.3", "Задание 3.4", "Задание 3.5" };
-            foreach (var task in tasks)
+            if (sender is Button button && button.CommandParameter is string param)
             {
-                var button = new Button { Text = task };
-                button.Clicked += (s, e) => NavigateToTask(task.Replace(" ", ""));
-                layout.Children.Add(button);
+                Page page = param switch
+                {
+                    "1" => new Task1Page(),
+                    "2" => new Task2Page(),
+                    "3" => new Task3Page(),
+                    "4" => new Task4Page(),
+                    "5" => new Task5Page(),
+                    _ => null
+                };
+
+                if (page != null)
+                    await Navigation.PushAsync(page);
             }
-
-            Content = new ScrollView { Content = layout };
-        }
-
-        private void NavigateToTask(string taskName)
-        {
-            Page page = taskName switch
-            {
-                "Задание3.1" => new Task1Page(),
-                "Задание3.2" => new Task2Page(),
-                "Задание3.3" => new Task3Page(),
-                "Задание3.4" => new Task4Page(),
-                "Задание3.5" => new Task5Page(),
-                _ => null
-            };
-
-            if (page != null)
-                Navigation.PushAsync(page);
         }
     }
 }
 ```
 
-#### Страница задания 3.1 (Task1Page.xaml.cs)
+### 3. TaskBasePage.xaml (Базовый шаблон)
+```xml
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="LabWork39.TaskBasePage"
+             Title="{Binding Title}">
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Назад" Clicked="OnBackClicked" />
+    </ContentPage.ToolbarItems>
+    
+    <ListView x:Name="listView">
+        <ListView.ItemTemplate>
+            <DataTemplate>
+                <ViewCell>
+                    <VerticalStackLayout Padding="10">
+                        <Label Text="{Binding DisplayText}" 
+                               FontAttributes="Bold" 
+                               FontSize="16"/>
+                        <Label Text="{Binding DisplayDetail}" 
+                               TextColor="Gray"
+                               FontSize="14"/>
+                    </VerticalStackLayout>
+                </ViewCell>
+            </DataTemplate>
+        </ListView.ItemTemplate>
+    </ListView>
+</ContentPage>
+```
+
+### 4. TaskBasePage.xaml.cs
 ```csharp
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using Xamarin.Forms;
+using Microsoft.Maui.Controls;
 
 namespace LabWork39
 {
-    public partial class Task1Page : ContentPage
+    public partial class TaskBasePage : ContentPage
+    {
+        public string Title { get; set; } = "Задание";
+
+        public TaskBasePage()
+        {
+            InitializeComponent();
+            BindingContext = this;
+        }
+
+        private async void OnBackClicked(object sender, EventArgs e)
+        {
+            await Navigation.PopAsync();
+        }
+    }
+}
+```
+
+### 5. Task1Page.xaml.cs (Задание 3.1)
+```csharp
+using System.IO;
+using System.Linq;
+
+namespace LabWork39
+{
+    public partial class Task1Page : TaskBasePage
     {
         public Task1Page()
         {
-            InitializeComponent();
+            Title = "Задание 3.1: Группировка по расширению";
             RunTask();
         }
 
         private void RunTask()
         {
-            var directory = new DirectoryInfo(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData));
+            var directory = new DirectoryInfo(FileSystem.AppDataDirectory);
             var files = directory.GetFiles("*", SearchOption.AllDirectories).AsEnumerable();
 
             var query = files
-                .GroupBy(f => f.Extension.ToLower())
+                .GroupBy(f => string.IsNullOrEmpty(f.Extension) ? "Без расширения" : f.Extension.ToLower())
                 .Select(g => new
                 {
-                    Extension = string.IsNullOrEmpty(g.Key) ? "Без расширения" : g.Key,
-                    TotalSize = g.Sum(f => f.Length),
-                    MinSize = g.Min(f => f.Length),
-                    MaxSize = g.Max(f => f.Length),
-                    FileCount = g.Count()
+                    DisplayText = g.Key,
+                    DisplayDetail = $"Файлов: {g.Count()}, " +
+                                   $"Размер: {g.Sum(f => f.Length):n0} байт, " +
+                                   $"Мин: {g.Min(f => f.Length):n0}, " +
+                                   $"Макс: {g.Max(f => f.Length):n0}"
                 })
                 .ToList();
 
@@ -88,38 +149,34 @@ namespace LabWork39
 }
 ```
 
-#### Страница задания 3.2 (Task2Page.xaml.cs)
+### 6. Task2Page.xaml.cs (Задание 3.2)
 ```csharp
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Xamarin.Forms;
 
 namespace LabWork39
 {
-    public partial class Task2Page : ContentPage
+    public partial class Task2Page : TaskBasePage
     {
         public Task2Page()
         {
-            InitializeComponent();
+            Title = "Задание 3.2: Группировка по дате";
             RunTask();
         }
 
         private void RunTask()
         {
-            var directory = new DirectoryInfo(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData));
+            var directory = new DirectoryInfo(FileSystem.AppDataDirectory);
             var files = directory.GetFiles("*", SearchOption.AllDirectories).AsEnumerable();
 
             var query = files
                 .GroupBy(f => new { f.CreationTime.Year, f.CreationTime.Month })
                 .Select(g => new
                 {
-                    Year = g.Key.Year,
-                    Month = g.Key.Month,
-                    FileCount = g.Count()
+                    DisplayText = $"{g.Key.Year}-{g.Key.Month:D2}",
+                    DisplayDetail = $"Файлов: {g.Count()}"
                 })
-                .OrderBy(r => r.Year)
-                .ThenBy(r => r.Month)
+                .OrderByDescending(x => x.DisplayText)
                 .ToList();
 
             listView.ItemsSource = query;
@@ -128,26 +185,24 @@ namespace LabWork39
 }
 ```
 
-#### Страница задания 3.3 (Task3Page.xaml.cs)
+### 7. Task3Page.xaml.cs (Задание 3.3)
 ```csharp
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Xamarin.Forms;
 
 namespace LabWork39
 {
-    public partial class Task3Page : ContentPage
+    public partial class Task3Page : TaskBasePage
     {
         public Task3Page()
         {
-            InitializeComponent();
+            Title = "Задание 3.3: Объединение файлов и папок";
             RunTask();
         }
 
         private void RunTask()
         {
-            var directory = new DirectoryInfo(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData));
+            var directory = new DirectoryInfo(FileSystem.AppDataDirectory);
             var files = directory.GetFiles("*", SearchOption.AllDirectories).AsEnumerable();
             var directories = directory.GetDirectories("*", SearchOption.AllDirectories).AsEnumerable();
 
@@ -163,6 +218,11 @@ namespace LabWork39
                     Path = d.FullName,
                     Created = d.CreationTime
                 }))
+                .Select(item => new
+                {
+                    DisplayText = item.Name,
+                    DisplayDetail = $"Путь: {item.Path}\nСоздан: {item.Created:g}"
+                })
                 .ToList();
 
             listView.ItemsSource = query;
@@ -171,27 +231,25 @@ namespace LabWork39
 }
 ```
 
-#### Страница задания 3.4 (Task4Page.xaml.cs)
+### 8. Task4Page.xaml.cs (Задание 3.4)
 ```csharp
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Xamarin.Forms;
 
 namespace LabWork39
 {
-    public partial class Task4Page : ContentPage
+    public partial class Task4Page : TaskBasePage
     {
         public Task4Page()
         {
-            InitializeComponent();
+            Title = "Задание 3.4: Файлы в сегодняшних папках";
             RunTask();
         }
 
         private void RunTask()
         {
-            var directory = new DirectoryInfo(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData));
+            var directory = new DirectoryInfo(FileSystem.AppDataDirectory);
             var files = directory.GetFiles("*", SearchOption.AllDirectories).AsEnumerable();
             var directories = directory.GetDirectories("*", SearchOption.AllDirectories).AsEnumerable();
 
@@ -201,47 +259,10 @@ namespace LabWork39
                 .Join(files,
                     d => d.FullName,
                     f => f.DirectoryName,
-                    (d, f) => f.Name)
-                .Distinct()
-                .ToList();
-
-            listView.ItemsSource = query;
-        }
-    }
-}
-```
-
-#### Страница задания 3.5 (Task5Page.xaml.cs)
-```csharp
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using Xamarin.Forms;
-
-namespace LabWork39
-{
-    public partial class Task5Page : ContentPage
-    {
-        public Task5Page()
-        {
-            InitializeComponent();
-            RunTask();
-        }
-
-        private void RunTask()
-        {
-            var directory = new DirectoryInfo(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData));
-            var files = directory.GetFiles("*", SearchOption.AllDirectories).AsEnumerable();
-            var directories = directory.GetDirectories("*", SearchOption.AllDirectories).AsEnumerable();
-
-            var query = directories
-                .GroupJoin(files,
-                    d => d.FullName,
-                    f => f.DirectoryName,
-                    (d, fileGroup) => new
+                    (d, f) => new
                     {
-                        DirectoryName = d.FullName,
-                        FileCount = fileGroup.Count()
+                        DisplayText = f.Name,
+                        DisplayDetail = $"В папке: {d.Name}\nПуть: {f.FullName}"
                     })
                 .ToList();
 
@@ -251,41 +272,91 @@ namespace LabWork39
 }
 ```
 
-### XAML-шаблон для страниц заданий (TaskXPage.xaml)
-```xml
-<?xml version="1.0" encoding="utf-8"?>
-<ContentPage xmlns="http://xamarin.com/schemas/2014/forms"
-             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             x:Class="LabWork39.TaskXPage">
-    <ContentPage.Content>
-        <ListView x:Name="listView">
-            <ListView.ItemTemplate>
-                <DataTemplate>
-                    <TextCell Text="{Binding}" Detail="{Binding .}"/>
-                </DataTemplate>
-            </ListView.ItemTemplate>
-        </ListView>
-    </ContentPage.Content>
-</ContentPage>
+### 9. Task5Page.xaml.cs (Задание 3.5)
+```csharp
+using System.IO;
+using System.Linq;
+
+namespace LabWork39
+{
+    public partial class Task5Page : TaskBasePage
+    {
+        public Task5Page()
+        {
+            Title = "Задание 3.5: Файлы в папках";
+            RunTask();
+        }
+
+        private void RunTask()
+        {
+            var directory = new DirectoryInfo(FileSystem.AppDataDirectory);
+            var files = directory.GetFiles("*", SearchOption.AllDirectories).AsEnumerable();
+            var directories = directory.GetDirectories("*", SearchOption.AllDirectories).AsEnumerable();
+
+            var query = directories
+                .GroupJoin(files,
+                    d => d.FullName,
+                    f => f.DirectoryName,
+                    (d, fileGroup) => new
+                    {
+                        DisplayText = d.Name,
+                        DisplayDetail = $"Путь: {d.FullName}\nФайлов: {fileGroup.Count()}"
+                    })
+                .ToList();
+
+            listView.ItemsSource = query;
+        }
+    }
+}
+```
+
+### 10. App.xaml.cs
+```csharp
+using Microsoft.Maui.Controls;
+
+namespace LabWork39
+{
+    public partial class App : Application
+    {
+        public App()
+        {
+            InitializeComponent();
+            MainPage = new NavigationPage(new MainPage());
+        }
+    }
+}
 ```
 
 ### Особенности реализации:
-1. **Платформозависимые пути**:
-   - Используется `Environment.SpecialFolder.LocalApplicationData`
-   - Для Android/iOS требуется разрешение `READ_EXTERNAL_STORAGE`
+1. **Платформонезависимый доступ к данным**:
+   - Используется `FileSystem.AppDataDirectory` для получения пути к папке приложения
+   - Работает на всех платформах (Windows, Android, iOS, macOS)
 
-2. **Обработка данных**:
-   - Группировка по расширениям (с обработкой пустых расширений)
-   - Фильтрация по текущей дате
-   - Объединение файлов и директорий
-   - Соединение данных через Join/GroupJoin
+2. **Архитектура**:
+   - Базовый класс `TaskBasePage` для общих элементов UI
+   - Навигация через `NavigationPage`
+   - Динамическое создание страниц с заданиями
 
-3. **Производительность**:
-   - `SearchOption.AllDirectories` может быть медленным для больших директорий
-   - Рекомендуется использовать `Task.Run()` для выгрузки операций в фоновый поток
+3. **Оптимизация производительности**:
+   - Использование `SearchOption.AllDirectories` только для демонстрации
+   - В реальных приложениях следует использовать асинхронные вызовы
 
-4. **Отображение данных**:
-   - Универсальный шаблон для вывода любых объектов
-   - Автоматическое форматирование через `ToString()`
+4. **Форматирование данных**:
+   - Читабельное форматирование размеров файлов
+   - Группировка по месяцам с сортировкой
+   - Многострочное отображение детальной информации
 
-Для тестирования рекомендуется использовать эмулятор с предварительно созданными тестовыми файлами и директориями.
+5. **Безопасность**:
+   - Работа только в пределах sandbox приложения
+   - Не требует дополнительных разрешений на мобильных платформах
+
+### Тестирование:
+1. Создайте тестовые файлы и папки в директории приложения
+2. Проверьте работу каждого задания:
+   - 3.1: Группировка по расширениям файлов
+   - 3.2: Статистика по месяцам создания
+   - 3.3: Объединенный список файлов и папок
+   - 3.4: Файлы в папках, созданных сегодня
+   - 3.5: Количество файлов в каждой папке
+
+Приложение полностью соответствует требованиям задания и использует современные практики разработки .NET MAUI приложений.
