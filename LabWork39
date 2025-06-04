@@ -1,4 +1,4 @@
-Вот полный код для .NET MAUI (NET 8.0) приложения, реализующего все задания:
+Давайте исправим проблему с базовыми классами, полностью переработав реализацию без использования наследования для страниц заданий. Вот корректный код для .NET MAUI (NET 8.0):
 
 ### 1. MainPage.xaml
 ```xml
@@ -57,26 +57,39 @@ namespace LabWork39
 }
 ```
 
-### 3. TaskBasePage.xaml (Базовый шаблон)
+### 3. App.xaml.cs
+```csharp
+using Microsoft.Maui.Controls;
+
+namespace LabWork39
+{
+    public partial class App : Application
+    {
+        public App()
+        {
+            InitializeComponent();
+            MainPage = new NavigationPage(new MainPage());
+        }
+    }
+}
+```
+
+### 4. Task1Page.xaml (Задание 3.1)
 ```xml
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             x:Class="LabWork39.TaskBasePage"
-             Title="{Binding Title}">
-    <ContentPage.ToolbarItems>
-        <ToolbarItem Text="Назад" Clicked="OnBackClicked" />
-    </ContentPage.ToolbarItems>
-    
+             x:Class="LabWork39.Task1Page"
+             Title="Задание 3.1: Группировка по расширению">
     <ListView x:Name="listView">
         <ListView.ItemTemplate>
             <DataTemplate>
                 <ViewCell>
                     <VerticalStackLayout Padding="10">
-                        <Label Text="{Binding DisplayText}" 
+                        <Label Text="{Binding Extension}" 
                                FontAttributes="Bold" 
                                FontSize="16"/>
-                        <Label Text="{Binding DisplayDetail}" 
+                        <Label Text="{Binding Details}" 
                                TextColor="Gray"
                                FontSize="14"/>
                     </VerticalStackLayout>
@@ -87,42 +100,19 @@ namespace LabWork39
 </ContentPage>
 ```
 
-### 4. TaskBasePage.xaml.cs
+### Task1Page.xaml.cs
 ```csharp
+using System.IO;
+using System.Linq;
 using Microsoft.Maui.Controls;
 
 namespace LabWork39
 {
-    public partial class TaskBasePage : ContentPage
-    {
-        public string Title { get; set; } = "Задание";
-
-        public TaskBasePage()
-        {
-            InitializeComponent();
-            BindingContext = this;
-        }
-
-        private async void OnBackClicked(object sender, EventArgs e)
-        {
-            await Navigation.PopAsync();
-        }
-    }
-}
-```
-
-### 5. Task1Page.xaml.cs (Задание 3.1)
-```csharp
-using System.IO;
-using System.Linq;
-
-namespace LabWork39
-{
-    public partial class Task1Page : TaskBasePage
+    public partial class Task1Page : ContentPage
     {
         public Task1Page()
         {
-            Title = "Задание 3.1: Группировка по расширению";
+            InitializeComponent();
             RunTask();
         }
 
@@ -135,11 +125,11 @@ namespace LabWork39
                 .GroupBy(f => string.IsNullOrEmpty(f.Extension) ? "Без расширения" : f.Extension.ToLower())
                 .Select(g => new
                 {
-                    DisplayText = g.Key,
-                    DisplayDetail = $"Файлов: {g.Count()}, " +
-                                   $"Размер: {g.Sum(f => f.Length):n0} байт, " +
-                                   $"Мин: {g.Min(f => f.Length):n0}, " +
-                                   $"Макс: {g.Max(f => f.Length):n0}"
+                    Extension = g.Key,
+                    Details = $"Файлов: {g.Count()}, " +
+                             $"Размер: {g.Sum(f => f.Length):n0} байт, " +
+                             $"Мин: {g.Min(f => f.Length):n0}, " +
+                             $"Макс: {g.Max(f => f.Length):n0}"
                 })
                 .ToList();
 
@@ -149,18 +139,45 @@ namespace LabWork39
 }
 ```
 
-### 6. Task2Page.xaml.cs (Задание 3.2)
+### 5. Task2Page.xaml (Задание 3.2)
+```xml
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="LabWork39.Task2Page"
+             Title="Задание 3.2: Группировка по дате">
+    <ListView x:Name="listView">
+        <ListView.ItemTemplate>
+            <DataTemplate>
+                <ViewCell>
+                    <VerticalStackLayout Padding="10">
+                        <Label Text="{Binding Period}" 
+                               FontAttributes="Bold" 
+                               FontSize="16"/>
+                        <Label Text="{Binding FileCount, StringFormat='Файлов: {0}'}" 
+                               TextColor="Gray"
+                               FontSize="14"/>
+                    </VerticalStackLayout>
+                </ViewCell>
+            </DataTemplate>
+        </ListView.ItemTemplate>
+    </ListView>
+</ContentPage>
+```
+
+### Task2Page.xaml.cs
 ```csharp
 using System.IO;
 using System.Linq;
+using Microsoft.Maui.Controls;
 
 namespace LabWork39
 {
-    public partial class Task2Page : TaskBasePage
+    public partial class Task2Page : ContentPage
     {
         public Task2Page()
         {
-            Title = "Задание 3.2: Группировка по дате";
+            InitializeComponent();
             RunTask();
         }
 
@@ -173,10 +190,10 @@ namespace LabWork39
                 .GroupBy(f => new { f.CreationTime.Year, f.CreationTime.Month })
                 .Select(g => new
                 {
-                    DisplayText = $"{g.Key.Year}-{g.Key.Month:D2}",
-                    DisplayDetail = $"Файлов: {g.Count()}"
+                    Period = $"{g.Key.Year}-{g.Key.Month:D2}",
+                    FileCount = g.Count()
                 })
-                .OrderByDescending(x => x.DisplayText)
+                .OrderByDescending(x => x.Period)
                 .ToList();
 
             listView.ItemsSource = query;
@@ -185,18 +202,48 @@ namespace LabWork39
 }
 ```
 
-### 7. Task3Page.xaml.cs (Задание 3.3)
+### 6. Task3Page.xaml (Задание 3.3)
+```xml
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="LabWork39.Task3Page"
+             Title="Задание 3.3: Объединение файлов и папок">
+    <ListView x:Name="listView">
+        <ListView.ItemTemplate>
+            <DataTemplate>
+                <ViewCell>
+                    <VerticalStackLayout Padding="10">
+                        <Label Text="{Binding Name}" 
+                               FontAttributes="Bold" 
+                               FontSize="16"/>
+                        <Label Text="{Binding Path}" 
+                               TextColor="Gray"
+                               FontSize="14"/>
+                        <Label Text="{Binding Created, StringFormat='Создан: {0:g}'}" 
+                               TextColor="Gray"
+                               FontSize="14"/>
+                    </VerticalStackLayout>
+                </ViewCell>
+            </DataTemplate>
+        </ListView.ItemTemplate>
+    </ListView>
+</ContentPage>
+```
+
+### Task3Page.xaml.cs
 ```csharp
 using System.IO;
 using System.Linq;
+using Microsoft.Maui.Controls;
 
 namespace LabWork39
 {
-    public partial class Task3Page : TaskBasePage
+    public partial class Task3Page : ContentPage
     {
         public Task3Page()
         {
-            Title = "Задание 3.3: Объединение файлов и папок";
+            InitializeComponent();
             RunTask();
         }
 
@@ -218,11 +265,6 @@ namespace LabWork39
                     Path = d.FullName,
                     Created = d.CreationTime
                 }))
-                .Select(item => new
-                {
-                    DisplayText = item.Name,
-                    DisplayDetail = $"Путь: {item.Path}\nСоздан: {item.Created:g}"
-                })
                 .ToList();
 
             listView.ItemsSource = query;
@@ -231,19 +273,42 @@ namespace LabWork39
 }
 ```
 
-### 8. Task4Page.xaml.cs (Задание 3.4)
+### 7. Task4Page.xaml (Задание 3.4)
+```xml
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="LabWork39.Task4Page"
+             Title="Задание 3.4: Файлы в сегодняшних папках">
+    <ListView x:Name="listView">
+        <ListView.ItemTemplate>
+            <DataTemplate>
+                <ViewCell>
+                    <VerticalStackLayout Padding="10">
+                        <Label Text="{Binding}" 
+                               FontSize="16"/>
+                    </VerticalStackLayout>
+                </ViewCell>
+            </DataTemplate>
+        </ListView.ItemTemplate>
+    </ListView>
+</ContentPage>
+```
+
+### Task4Page.xaml.cs
 ```csharp
 using System;
 using System.IO;
 using System.Linq;
+using Microsoft.Maui.Controls;
 
 namespace LabWork39
 {
-    public partial class Task4Page : TaskBasePage
+    public partial class Task4Page : ContentPage
     {
         public Task4Page()
         {
-            Title = "Задание 3.4: Файлы в сегодняшних папках";
+            InitializeComponent();
             RunTask();
         }
 
@@ -259,11 +324,8 @@ namespace LabWork39
                 .Join(files,
                     d => d.FullName,
                     f => f.DirectoryName,
-                    (d, f) => new
-                    {
-                        DisplayText = f.Name,
-                        DisplayDetail = $"В папке: {d.Name}\nПуть: {f.FullName}"
-                    })
+                    (d, f) => f.Name)
+                .Distinct()
                 .ToList();
 
             listView.ItemsSource = query;
@@ -272,18 +334,45 @@ namespace LabWork39
 }
 ```
 
-### 9. Task5Page.xaml.cs (Задание 3.5)
+### 8. Task5Page.xaml (Задание 3.5)
+```xml
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="LabWork39.Task5Page"
+             Title="Задание 3.5: Файлы в папках">
+    <ListView x:Name="listView">
+        <ListView.ItemTemplate>
+            <DataTemplate>
+                <ViewCell>
+                    <VerticalStackLayout Padding="10">
+                        <Label Text="{Binding DirectoryName}" 
+                               FontAttributes="Bold" 
+                               FontSize="16"/>
+                        <Label Text="{Binding FileCount, StringFormat='Файлов: {0}'}" 
+                               TextColor="Gray"
+                               FontSize="14"/>
+                    </VerticalStackLayout>
+                </ViewCell>
+            </DataTemplate>
+        </ListView.ItemTemplate>
+    </ListView>
+</ContentPage>
+```
+
+### Task5Page.xaml.cs
 ```csharp
 using System.IO;
 using System.Linq;
+using Microsoft.Maui.Controls;
 
 namespace LabWork39
 {
-    public partial class Task5Page : TaskBasePage
+    public partial class Task5Page : ContentPage
     {
         public Task5Page()
         {
-            Title = "Задание 3.5: Файлы в папках";
+            InitializeComponent();
             RunTask();
         }
 
@@ -299,8 +388,8 @@ namespace LabWork39
                     f => f.DirectoryName,
                     (d, fileGroup) => new
                     {
-                        DisplayText = d.Name,
-                        DisplayDetail = $"Путь: {d.FullName}\nФайлов: {fileGroup.Count()}"
+                        DirectoryName = d.FullName,
+                        FileCount = fileGroup.Count()
                     })
                 .ToList();
 
@@ -310,53 +399,24 @@ namespace LabWork39
 }
 ```
 
-### 10. App.xaml.cs
-```csharp
-using Microsoft.Maui.Controls;
+### Исправления:
+1. **Убрано наследование страниц**:
+   - Каждая страница задания теперь независима и наследуется напрямую от `ContentPage`
+   - Устранена проблема с конфликтом базовых классов
 
-namespace LabWork39
-{
-    public partial class App : Application
-    {
-        public App()
-        {
-            InitializeComponent();
-            MainPage = new NavigationPage(new MainPage());
-        }
-    }
-}
-```
+2. **Упрощена структура проекта**:
+   - Нет общих базовых классов для страниц заданий
+   - Каждая страница полностью автономна
 
-### Особенности реализации:
-1. **Платформонезависимый доступ к данным**:
-   - Используется `FileSystem.AppDataDirectory` для получения пути к папке приложения
-   - Работает на всех платформах (Windows, Android, iOS, macOS)
+3. **Оптимизировано отображение данных**:
+   - Для каждой страницы свой шаблон отображения
+   - Свойства привязаны напрямую к данным
 
-2. **Архитектура**:
-   - Базовый класс `TaskBasePage` для общих элементов UI
-   - Навигация через `NavigationPage`
-   - Динамическое создание страниц с заданиями
+4. **Корректные пути к данным**:
+   - Используется `FileSystem.AppDataDirectory` для кроссплатформенной работы
+   - Все операции выполняются в пределах sandbox приложения
 
-3. **Оптимизация производительности**:
-   - Использование `SearchOption.AllDirectories` только для демонстрации
-   - В реальных приложениях следует использовать асинхронные вызовы
+5. **Четкие названия свойств**:
+   - Для каждой страницы свои понятные названия свойств (Extension, Period, DirectoryName и т.д.)
 
-4. **Форматирование данных**:
-   - Читабельное форматирование размеров файлов
-   - Группировка по месяцам с сортировкой
-   - Многострочное отображение детальной информации
-
-5. **Безопасность**:
-   - Работа только в пределах sandbox приложения
-   - Не требует дополнительных разрешений на мобильных платформах
-
-### Тестирование:
-1. Создайте тестовые файлы и папки в директории приложения
-2. Проверьте работу каждого задания:
-   - 3.1: Группировка по расширениям файлов
-   - 3.2: Статистика по месяцам создания
-   - 3.3: Объединенный список файлов и папок
-   - 3.4: Файлы в папках, созданных сегодня
-   - 3.5: Количество файлов в каждой папке
-
-Приложение полностью соответствует требованиям задания и использует современные практики разработки .NET MAUI приложений.
+Это решение полностью соответствует требованиям задания и гарантирует отсутствие конфликтов с базовыми классами. Каждая страница задания теперь является независимым модулем со своей собственной логикой отображения и обработки данных.
